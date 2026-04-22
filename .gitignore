@@ -10,3 +10,4 @@ media/
 staticfiles/
 .DS_Store
 Thumbs.db
+.claude/
