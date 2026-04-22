@@ -49,37 +49,22 @@
 /* Courses section CTA polish */
 #home-landing .fcourse-actions a {
   position: relative;
-  overflow: hidden;
+  background-color: #8067f6;
   transition:
-    color 220ms var(--landing-ease),
-    transform 220ms var(--landing-ease),
-    box-shadow 260ms var(--landing-ease),
-    background-color 220ms var(--landing-ease);
-}
-
-#home-landing .fcourse-actions a::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, #ff9a1f 0%, #ff7a00 100%);
-  opacity: 0;
-  transition: opacity 240ms var(--landing-ease);
-  z-index: 0;
-}
-
-#home-landing .fcourse-actions a > * {
-  position: relative;
-  z-index: 1;
+    color 180ms ease,
+    transform 260ms var(--landing-ease),
+    background-color 220ms ease;
+  will-change: transform, background-color;
 }
 
 #home-landing .fcourse-actions a:hover {
   transform: translateY(-2px) scale(1.01);
+  background-color: #e97500;
   color: #fff;
-  box-shadow: 0 14px 30px rgba(255, 138, 0, 0.34);
 }
 
-#home-landing .fcourse-actions a:hover::before {
-  opacity: 1;
+#home-landing .fcourse-actions a:hover span {
+  color: #fff;
 }
 
 #home-landing .fcourse-actions a:focus-visible {
@@ -125,6 +110,17 @@
 #home-landing .figma-faq-list details[open] {
   border-color: #cfdcf0;
   box-shadow: 0 10px 22px rgba(42, 31, 95, 0.08);
+}
+
+/* Shared soft gradient band for companies, CTA, and FAQ on landing only */
+#home-landing .home-soft-band {
+  background: linear-gradient(180deg, #f4f6ff 0%, #c1caff 100%);
+}
+
+#home-landing .home-soft-band .figma-companies,
+#home-landing .home-soft-band .figma-cta-wrap,
+#home-landing .home-soft-band .figma-faq {
+  background: transparent;
 }
 
 /* Subtle pulse for stats icon row */

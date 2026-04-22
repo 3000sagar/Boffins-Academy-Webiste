@@ -187,18 +187,30 @@
 
   .fws-card ul {
     margin: 0 0 20px;
-    padding: 0 0 0 20px;
+    padding: 0;
+    list-style: none;
     display: grid;
     gap: 15px;
   }
 
   .fws-card li {
+    position: relative;
+    padding-left: 22px;
     color: #1e0a5f;
     font-size: 16px;
     line-height: 24px;
   }
 
-  .fws-card li::marker { color: #ff8a00; }
+  .fws-card li::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 10px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #ff8a00;
+  }
 
   .fws-card a {
     display: inline-flex;

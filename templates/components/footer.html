@@ -1,4 +1,4 @@
-<div class="footer-wave">
+<div class="footer-wave{% if request.resolver_match.url_name == 'home' %} footer-wave-home{% endif %}">
   <svg width="100%" height="50" viewBox="0 0 1280 50" preserveAspectRatio="none" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path fill-rule="evenodd" clip-rule="evenodd" d="M0 14.0313L71.4667 10.0348C141.867 6.03831 279.633 -2.36435 421.5 0.633039C563.367 3.63043 711.467 18.0279 853.333 20.0261C995.2 22.0244 1138.13 12.0331 1208.53 7.03744L1280 2.04179V50H1208.53C1138.13 50 995.2 50 853.333 50C711.467 50 568.533 50 426.667 50C284.8 50 141.867 50 71.4667 50H0V14.0313Z" fill="#6058d0"/>
   </svg>
@@ -85,6 +85,10 @@
     margin-bottom: -2px;
     position: relative;
     z-index: 2;
+  }
+
+  .footer-wave.footer-wave-home {
+    background: #c1caff;
   }
 
   .footer-wave svg {
