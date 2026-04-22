@@ -15,9 +15,7 @@ from .models import (
     CourseCTA,
     CourseCurriculum,
     CourseTechnology,
-    CourseProject,
     CourseCareerRole,
-    CourseOffer,
 )
 
 
@@ -74,21 +72,12 @@ class CourseTechnologyInline(admin.TabularInline):
     ordering = ("order",)
 
 
-class CourseProjectInline(admin.TabularInline):
-    model = CourseProject
-    extra = 1
-    ordering = ("order",)
+
 
 
 class CourseCareerRoleInline(admin.TabularInline):
     model = CourseCareerRole
     extra = 1
-    ordering = ("order",)
-
-
-class CourseOfferInline(admin.TabularInline):
-    model = CourseOffer
-    extra = 0
     ordering = ("order",)
 
 
@@ -109,9 +98,8 @@ class CoursesAdmin(admin.ModelAdmin):
         CourseCTAInline,
         CourseCurriculumInline,
         CourseTechnologyInline,
-        CourseProjectInline,
+        
         CourseCareerRoleInline,
-        CourseOfferInline,
     ]
 
 

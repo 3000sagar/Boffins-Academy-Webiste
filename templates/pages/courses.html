@@ -1451,13 +1451,6 @@
   </div>
 </section>
 
-{% if featured_offer %}
-<div class="courses-offer-banner">
-  <strong>{{ featured_offer.course.title }}</strong> – {{ featured_offer.discount_label }} available now until {{
-  featured_offer.formatted_deadline }}
-</div>
-{% endif %}
-
 <!-- ═══════════════════════════════════
      COURSE CARDS (Jinja loop)
 ═══════════════════════════════════ -->
@@ -1486,12 +1479,6 @@
         <div>
           <h2 class="course-card__name">{{ course.title }}</h2>
           <p class="course-card__tagline">{{ course.tagline }}</p>
-          {% if course.current_offer %}
-          <div class="course-card__offer-bar">
-            <span class="course-card__offer-label">{{ course.current_offer.discount_label }}</span>
-            <span class="course-card__offer-deadline">Ends {{ course.current_offer.formatted_deadline }}</span>
-          </div>
-          {% endif %}
         </div>
         <span class="course-card__badge-pill pill-chip">Most Popular</span>
       </div>
@@ -1534,21 +1521,7 @@
         <span class="course-card__tech-tag">{{ tech.name }}</span>
         {% endfor %}
       </div>
-      <!-- Portfolio Projects -->
-      <div class="course-card__section-heading">
-        <!-- target icon -->
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="12" r="10" stroke="#1E0A5F" stroke-width="1.5" />
-          <circle cx="12" cy="12" r="6" stroke="#1E0A5F" stroke-width="1.5" />
-          <circle cx="12" cy="12" r="2" stroke="#1E0A5F" stroke-width="1.5" />
-        </svg>
-        Portfolio Projects
-      </div>
-      <div class="course-card__projects">
-        {% for project in course.projects.all %}
-        <li class="course-card__project-item">{{ project.title }}</li>
-        {% endfor %}
-      </div>
+      
 
     </div><!-- /left -->
     <!-- RIGHT -->
@@ -1568,7 +1541,7 @@
         <ul class="course-card__info-list">
           <li><strong>Start Date</strong>: {{ course.batch.start_date | default:'Feb 15, 2025' }}</li>
           <li><strong>Duration:</strong> 16 weeks</li>
-          <li><strong>Schedule:</strong> Mon-Fri, 7-9 PM</li>
+          <li><strong>Schedule:</strong> Mon-Sat</li>
           <li><strong>Mode:</strong> Offline</li>
         </ul>
       </div>

@@ -194,20 +194,20 @@ class CourseTechnology(models.Model):
 # =========================
 # Portfolio Projects
 # =========================
-class CourseProject(models.Model):
-    course = models.ForeignKey(
-        Courses,
-        on_delete=models.CASCADE,
-        related_name="projects"
-    )
-    title = models.CharField(max_length=150)
-    order = models.PositiveIntegerField(default=0)
+# class CourseProject(models.Model):
+#     course = models.ForeignKey(
+#         Courses,
+#         on_delete=models.CASCADE,
+#         related_name="projects"
+#     )
+#     title = models.CharField(max_length=150)
+#     order = models.PositiveIntegerField(default=0)
 
-    class Meta:
-        ordering = ["order"]
+#     class Meta:
+#         ordering = ["order"]
 
-    def __str__(self):
-        return self.title
+#     def __str__(self):
+#         return self.title
 
 # =========================
 # Career Opportunities
@@ -226,52 +226,6 @@ class CourseCareerRole(models.Model):
 
     def __str__(self):
         return self.title
-
-
-class CourseOffer(models.Model):
-    course = models.ForeignKey(
-        Courses,
-        on_delete=models.CASCADE,
-        related_name="offers"
-    )
-    title = models.CharField(max_length=150)
-    description = models.TextField()
-    discount_percentage = models.PositiveIntegerField(
-        help_text="Discount percentage (e.g., 20 for 20%)",
-        blank=True,
-        null=True
-    )
-    discount_amount = models.PositiveIntegerField(
-        help_text="Fixed discount amount in rupees",
-        blank=True,
-        null=True
-    )
-    deadline = models.DateTimeField()
-    is_active = models.BooleanField(default=True)
-    order = models.PositiveIntegerField(default=0)
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        ordering = ["order"]
-
-    def __str__(self):
-        return f"{self.title} - {self.course.title}"
-
-    @property
-    def discount_label(self):
-        if self.discount_percentage:
-            return f"{self.discount_percentage}% off"
-        if self.discount_amount:
-            return f"₹{self.discount_amount} off"
-        return "Special offer"
-
-    @property
-    def formatted_deadline(self):
-        return self.deadline.strftime("%b %d, %Y")
-
-    @property
-    def is_expired(self):
-        return timezone.now() > self.deadline
 
 
 class GalleryImage(models.Model):

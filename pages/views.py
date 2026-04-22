@@ -74,25 +74,16 @@ def courses(request):
         .prefetch_related(
             "curriculum",
             "technologies",
-            "projects",
             "career_roles",
-            "offers",
         )
         .order_by("order")
     )
-
-    featured_offer = None
-    for course in courses:
-        if course.current_offer:
-            featured_offer = course.current_offer
-            break
 
     return render(
         request,
         "pages/courses.html",
         {
             "courses": courses,
-            "featured_offer": featured_offer,
         }
     )
 
@@ -101,7 +92,7 @@ def course_detail(request, slug):
     course = get_object_or_404(
         Courses.objects.filter(is_active=True)
         .select_related("salary", "batch", "certificate", "cta")
-        .prefetch_related("curriculum", "technologies", "projects", "career_roles", "offers"),
+        .prefetch_related("curriculum", "technologies", "projects", "career_roles"),
         slug=slug,
     )
 
@@ -183,20 +174,12 @@ def course_detail(request, slug):
             }
         ]
 
-    # Get active, non-expired offers
-    from django.utils import timezone
-    active_offers = course.offers.filter(
-        is_active=True,
-        deadline__gte=timezone.now()
-    ).order_by("order")
-
     return render(
         request,
         "pages/course_detail.html",
         {
             "course": course,
             "tool_overview": tool_overview,
-            "active_offers": active_offers,
         },
     )
 

@@ -70,7 +70,6 @@ def _build_admin_context(base_context: dict) -> dict:
             Courses,
             CourseCurriculum,
             CourseTechnology,
-            CourseProject,
             CourseCareerRole,
             Placement,
             Company,
