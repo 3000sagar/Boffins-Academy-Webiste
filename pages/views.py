@@ -92,7 +92,7 @@ def course_detail(request, slug):
     course = get_object_or_404(
         Courses.objects.filter(is_active=True)
         .select_related("salary", "batch", "certificate", "cta")
-        .prefetch_related("curriculum", "technologies", "projects", "career_roles"),
+        .prefetch_related("curriculum", "technologies","career_roles"),
         slug=slug,
     )
 

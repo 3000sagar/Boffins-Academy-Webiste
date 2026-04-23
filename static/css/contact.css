@@ -89,20 +89,20 @@
 }
 
 .icon-box {
-  flex: 0 0 46px;
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
+  flex: 0 0 60px;
+  width: 60px;
+  height: 60px;
+  border-radius: 16px;
   display: grid;
   place-items: center;
 }
 
 .icon-box svg {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   stroke: #ffffff;
   fill: none;
-  stroke-width: 2;
+  stroke-width: 2.2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -215,6 +215,12 @@
   padding: 10px 16px;
   cursor: pointer;
   transition: filter 180ms ease, transform 120ms ease;
+}
+
+.contact-form button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: grayscale(30%);
 }
 
 .contact-form button:hover { filter: brightness(1.04); }
