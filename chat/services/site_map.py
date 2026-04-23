@@ -3,6 +3,9 @@
 # =========================
 # PAGE-LEVEL SITE MAP
 # =========================
+# All page paths use trailing slashes to match Django's canonical URLs.
+# Without trailing slashes Django issues a 301 redirect which drops the
+# page-specific CSS and JS, causing the white/unstyled page bug.
 
 SITE_MAP = {
     "home": {
@@ -16,7 +19,7 @@ SITE_MAP = {
     },
 
     "courses": {
-        "page": "/courses",
+        "page": "/courses/",          # ← trailing slash (was /courses)
         "keywords": [
             "course",
             "courses",
@@ -27,13 +30,13 @@ SITE_MAP = {
         "has_price": False,
         "cta": {
             "label": "Get Course Pricing",
-            "page": "/contact",
+            "page": "/contact/",
         },
         "sections": {},
     },
 
     "instructors": {
-        "page": "/instructors",
+        "page": "/instructors/",       # ← trailing slash
         "keywords": [
             "instructor",
             "instructors",
@@ -52,7 +55,7 @@ SITE_MAP = {
     },
 
     "placements": {
-        "page": "/placements",
+        "page": "/placements/",        # ← trailing slash
         "keywords": [
             "placement",
             "placements",
@@ -61,6 +64,11 @@ SITE_MAP = {
             "salary",
             "lpa",
             "career",
+            "success stories",
+            "success story",
+            "testimonials",
+            "reviews",
+            "alumni",             # ← was routing to non-existent /success-stories
         ],
         "sections": {
             "top": "#placements-hero",
@@ -72,7 +80,7 @@ SITE_MAP = {
     },
 
     "gallery": {
-        "page": "/gallery",
+        "page": "/gallery/",           # ← trailing slash
         "keywords": [
             "gallery",
             "photos",
@@ -88,7 +96,7 @@ SITE_MAP = {
     },
 
     "about": {
-        "page": "/about",
+        "page": "/about/",             # ← trailing slash
         "keywords": [
             "about",
             "about us",
@@ -105,7 +113,7 @@ SITE_MAP = {
     },
 
     "contact": {
-        "page": "/contact",
+        "page": "/contact/",           # ← trailing slash
         "keywords": [
             "contact",
             "contact us",
@@ -139,6 +147,7 @@ COURSES = {
             "machine learning",
             "ml",
             "ai course",
+            "python",
         ],
         "section": "#course-data-science",
     },

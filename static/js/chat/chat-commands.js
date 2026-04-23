@@ -1,85 +1,79 @@
 (() => {
   const ui = window.ChatUI;
-  let fadeStylesInjected = false;
 
-  function spaNavigate(url) {
-    if (!url || window.location.pathname === url) {
+  /**
+   * navigateTo — replaces the old fragile spaNavigate fetch/DOM-swap.
+   *
+   * Why the old approach broke CSS:
+   *   - fetch() + innerHTML swap re-inserts <link> tags but browsers often
+   *     don't re-request them, so page-specific CSS from the new page never loads.
+   *   - <script> tags inserted via innerHTML never execute, so page JS breaks too.
+   *
+   * New approach: window.location.assign() for full page loads every time.
+   *   - Every page loads its own CSS/JS correctly, no exceptions.
+   *   - Section targeting is preserved via URL hash (#section-id).
+   *   - Same-page section scrolling still uses smooth scroll (no reload).
+   */
+  function navigateTo(url, section) {
+    if (!url) return;
+
+    const targetPath = url.endsWith("/") ? url : url + "/";
+    const currentPath = window.location.pathname;
+    const isSamePage = currentPath === targetPath;
+
+    if (isSamePage) {
+      // Already on this page — just scroll to the section if provided
+      if (section) {
+        scrollToSelector(section);
+      }
       return;
     }
 
-    if (!fadeStylesInjected) {
-      const style = document.createElement("style");
-      style.textContent = `
-        .page-fade-enter { opacity: 0; transform: translateY(10px) scale(0.992); filter: blur(7px); }
-        .page-fade-active {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-          filter: blur(0);
-          transition:
-            opacity 3s cubic-bezier(0.16, 1, 0.3, 1),
-            transform 3s cubic-bezier(0.16, 1, 0.3, 1),
-            filter 3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-      `;
-      document.head.appendChild(style);
-      fadeStylesInjected = true;
+    // Different page — full navigation (preserves CSS + JS on every page)
+    if (section) {
+      // Append hash so browser scrolls to section after page loads
+      window.location.assign(targetPath + section);
+    } else {
+      window.location.assign(targetPath);
     }
-
-    fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
-      .then(res => res.text())
-      .then(html => {
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, "text/html");
-
-        const newMain = doc.querySelector("main");
-        const currentMain = document.querySelector("main");
-        const head = document.head;
-        const newPageCss = Array.from(
-          doc.querySelectorAll('link[rel="stylesheet"][data-page-css]')
-        );
-        const currentPageCss = Array.from(
-          document.querySelectorAll('link[rel="stylesheet"][data-page-css]')
-        );
-
-        if (newMain && currentMain) {
-          if (newPageCss.length > 0) {
-            currentPageCss.forEach((el) => el.remove());
-            newPageCss.forEach((el) => head.appendChild(el));
-          }
-
-          currentMain.innerHTML = newMain.innerHTML;
-          history.pushState({}, "", url);
-          window.scrollTo(0, 0);
-
-          currentMain.classList.add("page-fade-enter");
-          requestAnimationFrame(() => {
-            currentMain.classList.add("page-fade-active");
-            currentMain.classList.remove("page-fade-enter");
-            setTimeout(() => currentMain.classList.remove("page-fade-active"), 3200);
-          });
-
-          // 🔥 sync navbar state after SPA navigation
-          if (window.updateNavbarActive) {
-            window.updateNavbarActive(url);
-          }
-
-        } else {
-          // fallback
-          window.location.href = url;
-        }
-      })
-      .catch(() => {
-        window.location.href = url;
-      });
   }
 
+  /**
+   * scrollToSelector — smooth scroll to a CSS selector on the current page.
+   * Briefly highlights the element with a ring so the user knows where they landed.
+   */
   function scrollToSelector(selector) {
     const el = document.querySelector(selector);
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-      el.classList.add("ring-2", "ring-[#6C5CE7]");
-      setTimeout(() => el.classList.remove("ring-2", "ring-[#6C5CE7]"), 2000);
-    }
+    if (!el) return;
+
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+
+    // Subtle highlight ring — uses inline style to avoid Tailwind dependency
+    el.style.outline = "2px solid #6C5CE7";
+    el.style.outlineOffset = "4px";
+    setTimeout(() => {
+      el.style.outline = "";
+      el.style.outlineOffset = "";
+    }, 2000);
+  }
+
+  /**
+   * On page load, if there's a hash in the URL (e.g. from a chatbot navigate+section),
+   * scroll to that element smoothly once the page has fully rendered.
+   */
+  function handleHashOnLoad() {
+    const hash = window.location.hash;
+    if (!hash) return;
+
+    // Small delay to let the page finish rendering before scrolling
+    setTimeout(() => scrollToSelector(hash), 350);
+  }
+
+  // Run hash scroll on every page load
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", handleHashOnLoad);
+  } else {
+    handleHashOnLoad();
   }
 
   function showSuggestion(content, button) {
@@ -97,7 +91,8 @@
 
       switch (action.type) {
         case "navigate":
-          spaNavigate(action.page);
+          // action.section is optional — passed when bot also wants to scroll
+          navigateTo(action.page, action.section || null);
           break;
 
         case "scroll":
@@ -117,8 +112,8 @@
           break;
 
         default:
-          console.warn("Unknown action:", action);
+          console.warn("[ChatCommands] Unknown action type:", action.type);
       }
-    }
+    },
   };
 })();
