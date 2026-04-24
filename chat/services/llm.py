@@ -1,42 +1,72 @@
 import json
 import logging
-from openai import OpenAI, RateLimitError, OpenAIError
+
 from django.conf import settings
+from openai import OpenAI, OpenAIError, RateLimitError
+
 from .site_map import SITE_MAP, get_courses_map
 
 logger = logging.getLogger(__name__)
 client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 CLASSIFY_PROMPT = """
-You are Boffins Academy Assistant — intent classifier only.
+You are the intent router for the Boffins Academy website chatbot.
 
-Rules (STRICT):
-- Output ONLY valid JSON. No prose, no markdown, no code fences.
-- "primary" must be exactly one of: home, courses, instructors, placements, gallery, about, contact — or null.
-- "secondary" must be an array of strings (can be empty []).
-- "section" must be a CSS selector string or null.
+Your task is only to classify the user's message into:
+- the best page intent
+- any useful secondary intents
+- an optional section selector when the user clearly refers to a known course or section
 
-Output format (exactly, nothing else):
-{"primary": <string|null>, "secondary": [<string>, ...], "section": <string|null>}
+Rules:
+- Return only valid JSON.
+- No markdown, no prose, no explanations, no code fences.
+- "primary" must be exactly one of: home, courses, instructors, placements, gallery, about, contact, or null.
+- "secondary" must be an array. Use only relevant short labels already implied by the user request.
+- "section" must be a CSS selector string like "#course-data-science" or null.
+- Prefer null rather than guessing.
+- If the user asks about fees, pricing, cost, counselling, admission, contact details, or enrollment help, prefer "contact".
+- If the user asks about jobs, salary, hiring partners, alumni results, success stories, or placements, prefer "placements".
+- If the user asks about a specific course, syllabus, curriculum, technologies, duration, or what they will learn, prefer "courses".
+- Use a section only when it is clearly supported by the provided section map.
+
+Return exactly:
+{"primary": <string|null>, "secondary": <string[]>, "section": <string|null>}
 """
 
 ASSIST_PROMPT = """
-You are Boffins Assistant — the friendly AI for Boffins Academy, a professional
-offline tech training institute in Nagpur, India.
+You are Boffins Assistant, the website chatbot for Boffins Academy in Nagpur.
 
-Rules (STRICT):
-- Answer ONLY about Boffins Academy. Never discuss competitors or other institutes.
-- Use the admin data provided to answer confidently and accurately.
-- NEVER say "I don't have information" or "I'm not sure" about courses — the admin
-  data contains all course info, use it.
-- If a specific detail like exact fee is missing, say:
-  "Contact our counselling team via the Contact page for details."
-- NEVER use markdown: no **bold**, no *italic*, no [links](url), no bullet points,
-  no hyphens as bullets. Plain sentences only.
-- Keep answers to 1-3 short sentences maximum.
-- Be warm, positive, and encouraging.
-- For enrollment: say "Visit the Courses page or Contact page."
-- For pricing: say "Contact our counselling team via the Contact page."
+Your job is to sound like a helpful academy counselor inside a website chat panel.
+
+Core behavior:
+- Talk only about Boffins Academy.
+- Use the provided admin data as the source of truth.
+- Be accurate, practical, warm, and direct.
+- Write plain text only. No markdown, bullets, numbering, emojis, or quotes.
+- Keep replies concise: usually 1 to 3 short sentences.
+- Answer the user's real question first, then guide them if needed.
+
+Truthfulness:
+- Never invent courses, fees, dates, trainers, placement figures, policies, pages, or promises.
+- If a detail is missing or not explicit in the context, do not guess.
+- For fees, exact pricing, admission process details, or anything not provided, say:
+  Please contact our counselling team via the Contact page for exact details.
+
+Response style:
+- Avoid generic filler like "I am here to help" unless absolutely necessary.
+- Avoid robotic phrases like "based on the provided context".
+- If the user asks about a known course, mention that course naturally.
+- If the user message is vague like "hi", "hello", or "help", reply with a short welcoming line and mention 2 or 3 useful things you can help with, such as courses, placements, or contact details.
+- If the user asks for something unrelated to Boffins Academy, politely bring them back to academy-related help.
+- If the user asks about a course, tool, skill, or technology that is not a standalone course but is covered inside a broader program, do not lead with a flat no. Lead with the closest positive match first.
+- Example style: "Yes, Python is covered in our Data Science and AI program." If needed, follow with one short clarifying sentence that it is part of a broader course rather than a separate standalone program.
+- Avoid starting replies with negative phrasing like "We do not offer..." when there is a relevant positive alternative available inside the academy.
+- If the user asks about a course that is not clearly available at all, say so briefly and then suggest the closest relevant path using known academy data.
+
+Navigation awareness:
+- Use the current page and active course context when it helps.
+- If the best next step is another page, mention it naturally in one short sentence.
+- Do not mention internal field names, raw JSON, or system context.
 """
 
 
@@ -46,7 +76,22 @@ def _trim_text(value: str | None, limit: int) -> str:
     value = value.strip()
     if len(value) <= limit:
         return value
-    return value[: max(0, limit - 1)].rstrip() + "…"
+    return value[: max(0, limit - 1)].rstrip() + "..."
+
+
+def _safe_json_load(raw: str) -> dict:
+    text = (raw or "").strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.lower().startswith("json"):
+            text = text[4:].strip()
+    try:
+        parsed = json.loads(text)
+        if isinstance(parsed, dict):
+            return parsed
+    except Exception:
+        logger.warning("Failed to parse classifier JSON: %s", text)
+    return {"primary": None, "secondary": [], "section": None}
 
 
 def _build_admin_context(base_context: dict) -> dict:
@@ -65,80 +110,70 @@ def _build_admin_context(base_context: dict) -> dict:
 
     try:
         from pages.models import (
-            Courses,
+            Company,
+            CourseCareerRole,
             CourseCurriculum,
             CourseTechnology,
-            CourseCareerRole,
-            Placement,
-            Company,
+            Courses,
             GalleryImage,
+            Placement,
         )
-
-        # CourseProject is optional — import safely so a missing model
-        # never silently kills the entire context build.
-        try:
-            from pages.models import CourseProject
-            has_course_project = True
-        except ImportError:
-            has_course_project = False
-            logger.debug("CourseProject model not found — skipping projects data.")
 
         courses = Courses.objects.filter(is_active=True).order_by("order", "title")
         for course in courses:
-            is_active = False
+            is_active_course = False
             if active_slug and course.slug and course.slug.lower() == active_slug:
-                is_active = True
+                is_active_course = True
             if active_title and course.title and course.title.lower() == active_title:
-                is_active = True
+                is_active_course = True
 
-            # ── Related model: CourseSalary (OneToOne → salary.min_lpa / salary.max_lpa)
             salary_str = ""
             try:
-                s = course.salary
-                salary_str = f"₹{s.min_lpa}-{s.max_lpa} LPA"
+                salary = course.salary
+                salary_str = f"{salary.min_lpa}-{salary.max_lpa} LPA"
             except Exception:
-                pass  # No salary linked — leave blank
+                salary_str = ""
 
-            # ── Related model: CourseBatch (OneToOne → batch.start_date / batch.note)
             batch_str = ""
             try:
-                b = course.batch
-                batch_str = str(b.start_date or "")
-                if b.note:
-                    batch_str += f" ({b.note})"
+                batch = course.batch
+                batch_str = str(batch.start_date or "")
+                if batch.note:
+                    batch_str = f"{batch_str} ({batch.note})"
             except Exception:
-                pass  # No batch linked — leave blank
+                batch_str = ""
 
-            # ── Related model: CourseCertificate (OneToOne — may not exist)
             certificate_str = ""
             try:
-                c = course.certificate
-                certificate_str = _trim_text(str(c), 140)
+                certificate = course.certificate
+                certificate_str = _trim_text(str(certificate), 140)
             except Exception:
-                pass  # No certificate linked — leave blank
+                certificate_str = ""
+
+            technologies = CourseTechnology.objects.filter(course=course).order_by(
+                "order", "name"
+            )
 
             item = {
                 "title": course.title,
                 "slug": course.slug,
                 "tagline": _trim_text(course.tagline, 140),
                 "description": _trim_text(
-                    course.description, 240 if not is_active else 500
+                    course.description, 500 if is_active_course else 240
                 ),
                 "salary": salary_str,
                 "next_batch": batch_str,
                 "certificate": certificate_str,
+                "technologies": [t.name for t in technologies[:8]],
             }
 
-            if is_active:
-                curriculum = CourseCurriculum.objects.filter(
-                    course=course
-                ).order_by("order")
-                technologies = CourseTechnology.objects.filter(
-                    course=course
-                ).order_by("name")
-                career_roles = CourseCareerRole.objects.filter(
-                    course=course
-                ).order_by("title")
+            if is_active_course:
+                curriculum = CourseCurriculum.objects.filter(course=course).order_by(
+                    "order"
+                )
+                career_roles = CourseCareerRole.objects.filter(course=course).order_by(
+                    "order", "title"
+                )
 
                 item["curriculum"] = [
                     {"title": c.title, "duration": c.duration} for c in curriculum
@@ -146,35 +181,24 @@ def _build_admin_context(base_context: dict) -> dict:
                 item["technologies"] = [t.name for t in technologies]
                 item["career_roles"] = [r.title for r in career_roles]
 
-                if has_course_project:
-                    projects = CourseProject.objects.filter(
-                        course=course
-                    ).order_by("title")
-                    item["projects"] = [p.title for p in projects]
-
             data["courses"].append(item)
 
-        placements = Placement.objects.filter(is_active=True).order_by(
-            "order", "name"
-        )
-        placement_items = []
-        for placement in placements:
-            placement_items.append(
-                {
-                    "name": placement.name,
-                    "course": placement.course,
-                    "company": placement.company,
-                    "package_lpa": placement.package_lpa,
-                    "tag": placement.tag,
-                    "testimonial": _trim_text(placement.testimonial, 200),
-                }
-            )
+        placements = Placement.objects.filter(is_active=True).order_by("order", "name")
+        placement_items = [
+            {
+                "name": p.name,
+                "course": p.course,
+                "company": p.company,
+                "package_lpa": p.package_lpa,
+                "tag": p.tag,
+                "testimonial": _trim_text(p.testimonial, 200),
+            }
+            for p in placements
+        ]
 
         if active_title:
             active_placements = [
-                p
-                for p in placement_items
-                if active_title in (p.get("course") or "").lower()
+                p for p in placement_items if active_title in (p.get("course") or "").lower()
             ]
             data["placements"] = (
                 active_placements[:10] if active_placements else placement_items[:8]
@@ -188,18 +212,16 @@ def _build_admin_context(base_context: dict) -> dict:
         gallery = GalleryImage.objects.filter(is_active=True).order_by("order", "id")
         data["gallery"]["count"] = gallery.count()
         data["gallery"]["examples"] = [
-            _trim_text(img.alt_text, 80) for img in gallery[:8] if img.alt_text
+            _trim_text(g.alt_text, 80) for g in gallery[:8] if g.alt_text
         ]
-
-    except Exception as e:
-        # Log the real error — never swallow silently again
-        logger.error("_build_admin_context failed: %s", e, exc_info=True)
+    except Exception as exc:
+        logger.error("_build_admin_context failed: %s", exc, exc_info=True)
         return data
 
     return data
 
 
-def llm_classify_intent(message: str):
+def llm_classify_intent(message: str) -> dict:
     pages = list(SITE_MAP.keys())
     sections_map = {
         page: meta.get("sections", {}).copy()
@@ -218,12 +240,11 @@ def llm_classify_intent(message: str):
             course_sections[title] = section
         if slug:
             course_sections[slug.replace("-", " ")] = section
-
     if course_sections:
         sections_map["courses"] = course_sections
 
     if not settings.OPENAI_API_KEY:
-        return {"primary": None, "secondary": []}
+        return {"primary": None, "secondary": [], "section": None}
 
     try:
         response = client.chat.completions.create(
@@ -235,48 +256,48 @@ def llm_classify_intent(message: str):
                 {
                     "role": "user",
                     "content": (
-                        f'User message: "{message}"\n\n'
-                        f"Available pages: {pages}\n\n"
-                        f"Section anchors by page: {sections_map}\n\n"
-                        "Respond ONLY in JSON — no markdown, no code fences:\n"
-                        '{"primary": <page or null>, "secondary": [], "section": <selector or null>}'
+                        f'User message:\n"{message}"\n\n'
+                        f"Available pages:\n{pages}\n\n"
+                        f"Section anchors by page:\n{sections_map}"
                     ),
                 },
             ],
         )
     except RateLimitError:
-        return {"primary": None, "secondary": []}
+        return {"primary": None, "secondary": [], "section": None}
     except OpenAIError:
-        return {"primary": None, "secondary": []}
+        return {"primary": None, "secondary": [], "section": None}
 
-    content = response.choices[0].message.content.strip()
+    content = response.choices[0].message.content or ""
+    parsed = _safe_json_load(content)
 
-    # Strip accidental markdown code fences GPT sometimes adds
-    if content.startswith("```"):
-        content = content.split("```")[1]
-        if content.startswith("json"):
-            content = content[4:]
-        content = content.strip()
+    primary = parsed.get("primary")
+    if primary not in SITE_MAP:
+        primary = None
 
-    try:
-        return json.loads(content)
-    except Exception:
-        logger.warning("llm_classify_intent: failed to parse JSON: %s", content)
-        return {"primary": None, "secondary": []}
+    secondary = parsed.get("secondary")
+    if not isinstance(secondary, list):
+        secondary = []
+
+    section = parsed.get("section")
+    if section is not None and not isinstance(section, str):
+        section = None
+
+    return {"primary": primary, "secondary": secondary, "section": section}
 
 
-def llm_assist(message: str, context: dict):
+def llm_assist(message: str, context: dict) -> str:
     if not settings.OPENAI_API_KEY:
         return "Chat assistant is offline. Please set a valid OpenAI API key."
 
     admin_data = _build_admin_context(context or {})
-
     pages = list(SITE_MAP.keys())
     sections_map = {
         page: meta.get("sections", {}).copy()
         for page, meta in SITE_MAP.items()
         if meta.get("sections") is not None
     }
+
     course_titles = []
     for course in get_courses_map().values():
         title = (course.get("title") or "").strip()
@@ -286,24 +307,24 @@ def llm_assist(message: str, context: dict):
     try:
         response = client.chat.completions.create(
             model="gpt-4o-mini",
-            temperature=0.4,
+            temperature=0.3,
             max_tokens=150,
             messages=[
                 {"role": "system", "content": ASSIST_PROMPT},
                 {
                     "role": "user",
                     "content": (
-                        f"Context: {context}\n\n"
-                        f"Admin data (authoritative — use this to answer): {admin_data}\n\n"
-                        f"Available pages: {pages}\n\n"
-                        f"Known sections: {sections_map}\n\n"
-                        f"Known course titles: {course_titles}\n\n"
-                        f"User: {message}"
+                        f"Context:\n{context}\n\n"
+                        f"Admin data:\n{admin_data}\n\n"
+                        f"Available pages:\n{pages}\n\n"
+                        f"Known sections by page:\n{sections_map}\n\n"
+                        f"Known course titles:\n{course_titles}\n\n"
+                        f"User:\n{message}"
                     ),
                 },
             ],
         )
-        return response.choices[0].message.content.strip()
+        return (response.choices[0].message.content or "").strip()
     except RateLimitError:
         return "The assistant is temporarily unavailable due to high demand. Please try again shortly."
     except OpenAIError:

@@ -1,42 +1,19 @@
 # chat/services/site_map.py
 
-# =========================
-# PAGE-LEVEL SITE MAP
-# =========================
-# All page paths use trailing slashes to match Django's canonical URLs.
-# Without trailing slashes Django issues a 301 redirect which drops the
-# page-specific CSS and JS, causing the white/unstyled page bug.
-
 SITE_MAP = {
     "home": {
         "page": "/",
-        "keywords": [
-            "home",
-            "homepage",
-            "main",
-            "start",
-        ],
+        "keywords": ["home", "homepage", "main", "start"],
     },
-
     "courses": {
-        "page": "/courses/",          # ← trailing slash (was /courses)
-        "keywords": [
-            "course",
-            "courses",
-            "program",
-            "programs",
-            "training",
-        ],
+        "page": "/courses/",
+        "keywords": ["course", "courses", "program", "programs", "training"],
         "has_price": False,
-        "cta": {
-            "label": "Get Course Pricing",
-            "page": "/contact/",
-        },
+        "cta": {"label": "Get Course Pricing", "page": "/contact/"},
         "sections": {},
     },
-
     "instructors": {
-        "page": "/instructors/",       # ← trailing slash
+        "page": "/instructors/",
         "keywords": [
             "instructor",
             "instructors",
@@ -53,9 +30,8 @@ SITE_MAP = {
             "cta": "#instructors-cta",
         },
     },
-
     "placements": {
-        "page": "/placements/",        # ← trailing slash
+        "page": "/placements/",
         "keywords": [
             "placement",
             "placements",
@@ -68,7 +44,7 @@ SITE_MAP = {
             "success story",
             "testimonials",
             "reviews",
-            "alumni",             # ← was routing to non-existent /success-stories
+            "alumni",
         ],
         "sections": {
             "top": "#placements-hero",
@@ -78,31 +54,18 @@ SITE_MAP = {
             "cta": "#placements-cta",
         },
     },
-
     "gallery": {
-        "page": "/gallery/",           # ← trailing slash
-        "keywords": [
-            "gallery",
-            "photos",
-            "images",
-            "campus",
-            "events",
-        ],
+        "page": "/gallery/",
+        "keywords": ["gallery", "photos", "images", "campus", "events"],
         "sections": {
             "top": "#gallery-hero",
             "gallery": "#gallery-grid",
             "community": "#gallery-cta",
         },
     },
-
     "about": {
-        "page": "/about/",             # ← trailing slash
-        "keywords": [
-            "about",
-            "about us",
-            "company",
-            "academy",
-        ],
+        "page": "/about/",
+        "keywords": ["about", "about us", "company", "academy"],
         "sections": {
             "top": "#about-hero",
             "mission": "#mission-vision",
@@ -111,9 +74,8 @@ SITE_MAP = {
             "success story": "#about-cta",
         },
     },
-
     "contact": {
-        "page": "/contact/",           # ← trailing slash
+        "page": "/contact/",
         "keywords": [
             "contact",
             "contact us",
@@ -133,10 +95,6 @@ SITE_MAP = {
     },
 }
 
-# =========================
-# COURSE INTELLIGENCE MAP
-# =========================
-
 COURSES = {
     "data science": {
         "id": "data_science",
@@ -151,7 +109,6 @@ COURSES = {
         ],
         "section": "#course-data-science",
     },
-
     "full stack": {
         "id": "full_stack",
         "keywords": [
@@ -163,17 +120,9 @@ COURSES = {
         ],
         "section": "#course-full-stack-development",
     },
-
     "cloud devops": {
         "id": "cloud_devops",
-        "keywords": [
-            "cloud",
-            "devops",
-            "aws",
-            "azure",
-            "docker",
-            "kubernetes",
-        ],
+        "keywords": ["cloud", "devops", "aws", "azure", "docker", "kubernetes"],
         "section": "#course-cloud-devops",
     },
 }
@@ -191,12 +140,9 @@ def _split_keywords(value: str) -> list[str]:
 
 
 def get_courses_map():
-    """
-    Dynamic courses map built from DB (Courses model).
-    Falls back to static COURSES if DB is unavailable.
-    """
     try:
         from pages.models import Courses
+
         courses = Courses.objects.filter(is_active=True).order_by("order", "title")
         if not courses.exists():
             return COURSES
@@ -217,14 +163,13 @@ def get_courses_map():
                 keywords.append(slug.replace("-", " ").lower())
                 keywords.extend(_split_keywords(slug))
 
-            # De-duplicate keywords
             seen = set()
             clean_keywords = []
-            for k in keywords:
-                k = k.strip().lower()
-                if k and k not in seen:
-                    seen.add(k)
-                    clean_keywords.append(k)
+            for keyword in keywords:
+                keyword = keyword.strip().lower()
+                if keyword and keyword not in seen:
+                    seen.add(keyword)
+                    clean_keywords.append(keyword)
 
             course_map[key] = {
                 "id": slug or key.replace(" ", "_"),

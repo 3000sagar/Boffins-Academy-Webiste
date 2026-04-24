@@ -8,8 +8,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <link href="/static/css/output.css" rel="stylesheet">
-  <link href="/static/css/chat-glass.css" rel="stylesheet">
-  <link href="/static/css/responsive.css" rel="stylesheet">
+  <link href="/static/css/chat-glass.css?v=20260424-3" rel="stylesheet">
+  <link href="/static/css/responsive.css?v=20260424-3" rel="stylesheet">
   {% block page_css %}{% endblock %}
   <link href="/static/css/pill-unified.css" rel="stylesheet">
 
@@ -109,6 +109,8 @@
   <!-- CHAT PANEL -->
   <div
     id="chat-panel"
+    role="dialog"
+    aria-label="Boffins Assistant"
     class="
       pointer-events-auto
       fixed
@@ -134,8 +136,8 @@
   >
 
     <!-- HEADER -->
-    <div class="flex items-center justify-between px-4 py-3">
-      <div class="font-semibold text-[#2A1F3D] text-sm">
+    <div id="chat-header" class="flex items-center justify-between px-4 py-3">
+      <div class="font-semibold text-[#2A1F3D] text-sm tracking-[0.01em]">
         Boffins Assistant
       </div>
 
@@ -143,7 +145,7 @@
         id="chat-close"
         type="button"
         aria-label="Close chat"
-        class="text-gray-600 text-lg"
+        class="flex h-9 w-9 items-center justify-center rounded-full text-gray-600 text-xl leading-none transition-colors hover:bg-white/50"
       >
         ✕
       </button>
@@ -160,7 +162,7 @@
     </div>
 
     <!-- INPUT -->
-    <div class="px-3 py-2">
+    <div id="chat-input-bar" class="border-t px-3 py-3">
       <div class="flex items-center gap-2">
 
         <input
@@ -225,13 +227,13 @@
 </div>
 
 <!-- CHAT SCRIPTS -->
-<script src="/static/js/chat/chat-ui.js"></script>
-<script src="/static/js/chat/chat-commands.js"></script>
-<script src="/static/js/chat/chat-intents.js"></script>
-<script src="/static/js/chat/chat-api.js"></script>
-<script src="/static/js/chat/chat-toggle.js"></script>
-<script src="/static/js/chat/chat-voice.js"></script>
-<script src="/static/js/chat/chat-drag.js"></script>
+<script src="/static/js/chat/chat-ui.js?v=20260424-3"></script>
+<script src="/static/js/chat/chat-commands.js?v=20260424-3"></script>
+<script src="/static/js/chat/chat-intents.js?v=20260424-3"></script>
+<script src="/static/js/chat/chat-api.js?v=20260424-3"></script>
+<script src="/static/js/chat/chat-toggle.js?v=20260424-3"></script>
+<script src="/static/js/chat/chat-voice.js?v=20260424-3"></script>
+<script src="/static/js/chat/chat-drag.js?v=20260424-3"></script>
 
 <script src="/static/js/reveals.js"></script>
 <script src="/static/js/faq-accordion.js"></script>

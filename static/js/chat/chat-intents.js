@@ -1,18 +1,7 @@
 window.ChatIntent = (() => {
-  /**
-   * detect — client-side intent detection from raw user text.
-   *
-   * All paths use trailing slashes to match Django canonical URLs.
-   * This prevents 301 redirects that strip page CSS/JS.
-   *
-   * /success-stories was removed — it doesn't exist as a Django route.
-   * Those keywords now correctly point to /placements/ where success
-   * stories and alumni content actually lives.
-   */
   function detect(text) {
-    const msg = text.toLowerCase();
+    const msg = (text || "").toLowerCase();
 
-    // ── Courses ──────────────────────────────────────────────
     if (
       msg.includes("open courses") ||
       msg.includes("go to courses") ||
@@ -27,8 +16,6 @@ window.ChatIntent = (() => {
       return { action: "navigate", path: "/courses/" };
     }
 
-    // ── Placements / Success Stories / Alumni ─────────────────
-    // /success-stories does not exist — route to /placements/ instead
     if (
       msg.includes("placement") ||
       msg.includes("placements") ||
@@ -44,7 +31,6 @@ window.ChatIntent = (() => {
       return { action: "navigate", path: "/placements/" };
     }
 
-    // ── Contact ───────────────────────────────────────────────
     if (
       msg.includes("contact") ||
       msg.includes("contact page") ||
@@ -63,7 +49,6 @@ window.ChatIntent = (() => {
       return { action: "navigate", path: "/contact/" };
     }
 
-    // ── About ─────────────────────────────────────────────────
     if (
       msg.includes("about") ||
       msg.includes("about us") ||
@@ -76,7 +61,6 @@ window.ChatIntent = (() => {
       return { action: "navigate", path: "/about/" };
     }
 
-    // ── Gallery ───────────────────────────────────────────────
     if (
       msg.includes("gallery") ||
       msg.includes("photos") ||
@@ -87,7 +71,6 @@ window.ChatIntent = (() => {
       return { action: "navigate", path: "/gallery/" };
     }
 
-    // ── Instructors ───────────────────────────────────────────
     if (
       msg.includes("instructor") ||
       msg.includes("instructors") ||

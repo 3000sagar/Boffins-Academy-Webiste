@@ -83,8 +83,14 @@ body::-webkit-scrollbar {
 
 @media (max-width: 640px) {
   #chat-panel {
-    width: calc(100vw - 24px);
-    height: min(70vh, 560px);
+    width: calc(100vw - 20px);
+    height: min(72vh, 580px);
+    bottom: 10px;
+  }
+
+  #chat-messages {
+    padding-left: 14px;
+    padding-right: 14px;
   }
 }
 

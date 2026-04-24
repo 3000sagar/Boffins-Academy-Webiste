@@ -1,4 +1,6 @@
 (() => {
+  const CHAT_RESTORE_ONCE_KEY = "chat_restore_once_v1";
+  const CHAT_OPEN_KEY = "chat_open_v1";
   const ui = window.ChatUI;
   if (!ui) {
     console.error("[ChatAPI] ChatUI not found");
@@ -14,18 +16,6 @@
     ui.inputEl.value = "";
     ui.disableInput(true);
     ui.showTyping();
-
-    // Navigate early based on client-side intent to create "thinking" aura
-    try {
-      if (window.ChatIntent && typeof window.ChatIntent.detect === "function") {
-        const intent = window.ChatIntent.detect(text);
-        if (intent && intent.action === "navigate" && intent.path) {
-          window.ChatCommands.execute({ type: "navigate", page: intent.path });
-        }
-      }
-    } catch (err) {
-      console.warn("[ChatAPI] Pre-nav intent failed:", err);
-    }
 
     try {
       const res = await fetch("/api/chat/", {
@@ -46,21 +36,46 @@
 
       ui.hideTyping();
 
-      // ✅ NEW: action-based response
       if (Array.isArray(data.actions)) {
-        for (const action of data.actions) {
-          window.ChatCommands.execute(action);
+        const navigateAction = data.actions.find((a) => a && a.type === "navigate");
+        const nonNavigateActions = data.actions.filter((a) => {
+          if (!a || a.type === "navigate") return false;
+          if (navigateAction && a.type === "scroll") return false;
+          return true;
+        });
+
+        if (navigateAction) {
+          for (const action of nonNavigateActions) {
+            if (action.type === "message") {
+              ui.pushHistoryMessage(
+                "assistant",
+                (action.content && String(action.content).trim()) ||
+                  "I am here to help. Please tell me what you want to know.",
+                true,
+                true
+              );
+              continue;
+            }
+            window.ChatCommands.execute(action);
+          }
+
+          localStorage.setItem(CHAT_RESTORE_ONCE_KEY, "1");
+          localStorage.setItem(CHAT_OPEN_KEY, "1");
+          window.ChatCommands.execute(navigateAction);
+        } else {
+          for (const action of nonNavigateActions) {
+            window.ChatCommands.execute(action);
+          }
         }
         return;
       }
 
-      // 🔁 Backward compatibility
       if (data.type === "text") {
         ui.typeMessage(data.content, { role: "assistant", preserveLines: true });
         return;
       }
 
-      ui.addMessage("assistant", "I didn’t understand that.");
+      ui.addMessage("assistant", "I did not understand that.");
     } catch (err) {
       console.error("[ChatAPI] Error:", err);
       ui.hideTyping();
@@ -70,7 +85,6 @@
     }
   }
 
-  // expose globally
   window.ChatSend = sendMessage;
 
   ui.sendBtn.addEventListener("click", () => {

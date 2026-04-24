@@ -1,26 +1,50 @@
-import uuid
 import re
+import uuid
+
 from .faq import match_faq
 from .intents import parse_intent
+from .llm import llm_assist, llm_classify_intent
 from .session import get_session
 from .site_map import SITE_MAP, get_courses_map
-from .llm import llm_classify_intent, llm_assist
 
+
+def _fallback_reply(primary: str | None, detected_course: dict | None) -> str:
+    if detected_course:
+        course_title = detected_course.get("title") or detected_course.get("name") or "this course"
+        return f"You can explore details for {course_title} on our Courses page."
+
+    replies = {
+        "courses": "You can explore all programs on our Courses page.",
+        "placements": "You can view placement outcomes and hiring partners on our Placements page.",
+        "instructors": "You can meet our trainers and mentors on the Instructors page.",
+        "gallery": "You can check campus life and events on our Gallery page.",
+        "about": "You can learn more about Boffins Academy on the About page.",
+        "contact": "Please contact our counselling team via the Contact page for exact details.",
+        "home": "You can start from the Home page and navigate to any section you need.",
+    }
+    return replies.get(primary or "", "Please visit the Contact page and our team will guide you.")
+
+
+def _is_llm_unavailable(reply: str) -> bool:
+    text = (reply or "").lower()
+    return "temporarily unavailable" in text or "offline" in text
+
+
+def _finalize_reply(reply: str, primary: str | None, detected_course: dict | None) -> str:
+    if not isinstance(reply, str) or not reply.strip():
+        return _fallback_reply(primary, detected_course)
+    if _is_llm_unavailable(reply):
+        return _fallback_reply(primary, detected_course)
+    return reply.strip()
 
 
 def handle_message(session_id: str | None, message: str):
-    # =========================
-    # 1️⃣ Session bootstrap
-    # =========================
     session_id = session_id or str(uuid.uuid4())
     session = get_session(session_id)
 
     actions = []
     text = message.lower()
 
-    # =========================
-    # 2️⃣ Memory: name + goal
-    # =========================
     name_match = re.search(
         r"(?:my name is|i am|i'm)\s+([a-zA-Z][a-zA-Z'\- ]{0,40})",
         message,
@@ -42,93 +66,60 @@ def handle_message(session_id: str | None, message: str):
         if raw_goal:
             session["user_goal"] = raw_goal[:120]
 
-    # =========================
-    # 3️⃣ Detect specific course
-    # =========================
     detected_course = None
     for course_name, course in get_courses_map().items():
         if any(keyword in text for keyword in course["keywords"]):
-            detected_course = {
-                "name": course_name,
-                **course,
-            }
+            detected_course = {"name": course_name, **course}
             session["active_course"] = detected_course
             break
 
-    # Fallback to previous course context
     if not detected_course and session.get("active_course"):
         detected_course = session["active_course"]
 
-    # =========================
-    # 4️⃣ Intent (LLM first, then rules)
-    # =========================
     llm_intent = llm_classify_intent(message)
     if llm_intent.get("primary") in SITE_MAP:
+        intent = llm_intent
         primary = llm_intent["primary"]
         secondary = llm_intent.get("secondary", [])
-        intent = llm_intent
     else:
         intent = parse_intent(message)
         primary = intent.get("primary")
         secondary = intent.get("secondary", [])
 
-    # =========================
-    # 5️⃣ Domain rules (IMPORTANT)
-    # =========================
-
-    # 🔥 Course context applies ONLY if user didn't ask for another page
     if detected_course and not primary:
         primary = "courses"
 
-    # 🔥 If user explicitly switches page → clear course context
     if primary and primary != "courses":
         session["active_course"] = None
         detected_course = None
 
-    # =========================
-    # 6️⃣ If still no primary → FAQ fallback only
-    # =========================
     if not primary:
         faq_answer = match_faq(message)
         if faq_answer:
             return {
                 "session_id": session_id,
-                "actions": [
-                    {
-                        "type": "message",
-                        "content": faq_answer,
-                    }
-                ],
+                "actions": [{"type": "message", "content": faq_answer}],
             }
 
         reply = llm_assist(
-                message,
-                context={
-                    "current_page": session.get("current_page"),
-                    "active_course": session.get("active_course"),
-                    "user_name": session.get("user_name"),
-                    "user_goal": session.get("user_goal"),
-                }
-            )
+            message,
+            context={
+                "current_page": session.get("current_page"),
+                "active_course": session.get("active_course"),
+                "user_name": session.get("user_name"),
+                "user_goal": session.get("user_goal"),
+            },
+        )
+        reply = _finalize_reply(reply, primary=None, detected_course=detected_course)
 
         return {
             "session_id": session_id,
-            "actions": [
-                {
-                    "type": "message",
-                    "content": reply,
-                }
-            ],
+            "actions": [{"type": "message", "content": reply}],
         }
 
+    page_info = SITE_MAP.get(primary, {})
+    target_page = page_info.get("page")
 
-    # =========================
-    # 7️⃣ Resolve page + navigation
-    # =========================
-    page_info = SITE_MAP.get(primary)
-    target_page = page_info["page"]
-
-    # Resolve section (LLM or course-aware)
     section_selector = None
     if isinstance(intent, dict):
         section = intent.get("section")
@@ -141,23 +132,19 @@ def handle_message(session_id: str | None, message: str):
     if primary == "courses" and detected_course and not section_selector:
         section_selector = detected_course.get("section")
 
-    if session.get("current_page") != target_page:
-        actions.append({
-            "type": "navigate",
-            "page": target_page,
-        })
+    current_page = session.get("current_page")
+    navigating_to_new_page = bool(target_page and current_page != target_page)
+
+    if navigating_to_new_page:
+        navigate_url = target_page
+        if section_selector and section_selector.startswith("#"):
+            navigate_url = f"{target_page}{section_selector}"
+        actions.append({"type": "navigate", "page": navigate_url})
         session["current_page"] = target_page
         session.setdefault("visited_pages", []).append(target_page)
+    elif section_selector:
+        actions.append({"type": "scroll", "selector": section_selector})
 
-    if section_selector:
-        actions.append({
-            "type": "scroll",
-            "selector": section_selector,
-        })
-
-    # =========================
-    # 8️⃣ Contextual message (LLM-first)
-    # =========================
     reply = llm_assist(
         message,
         context={
@@ -167,110 +154,61 @@ def handle_message(session_id: str | None, message: str):
             "secondary": secondary,
             "user_name": session.get("user_name"),
             "user_goal": session.get("user_goal"),
-        }
+        },
     )
 
-    if reply:
-        actions.append({
-            "type": "message",
-            "content": reply,
-        })
-    elif detected_course:
-        actions.append({
-            "type": "message",
-            "content": (
-                f"Here are the details for our "
-                f"{detected_course['name'].title()} program."
-            ),
-        })
-    else:
-        actions.append({
-            "type": "message",
-            "content": f"Here’s what you need to know about our {primary}.",
-        })
+    actions.append(
+        {"type": "message", "content": _finalize_reply(reply, primary, detected_course)}
+    )
 
-    # =========================
-    # 9️⃣ Secondary intent handling
-    # =========================
     for sec in secondary:
-
-        # 💰 Pricing → CTA
-        if sec == "pricing":
-            if not page_info.get("has_price", True):
-                cta = page_info.get("cta")
-                if cta:
-                    actions.append({
+        if sec == "pricing" and not page_info.get("has_price", True):
+            cta = page_info.get("cta")
+            if cta:
+                actions.append(
+                    {
                         "type": "suggest",
-                        "content": (
-                            "Course pricing depends on counselling "
-                            "and your background."
-                        ),
-                        "button": {
-                            "label": cta["label"],
-                            "page": cta["page"],
-                        },
-                    })
-
-        # ⏱ Duration
+                        "content": "Course pricing depends on counselling and your background.",
+                        "button": {"label": cta["label"], "page": cta["page"]},
+                    }
+                )
         elif sec == "duration":
-            actions.append({
-                "type": "message",
-                "content": (
-                    "Course duration varies by program. "
-                    "You’ll find the details on this page."
-                ),
-            })
-
-        # 📘 Syllabus (course-aware)
+            actions.append(
+                {
+                    "type": "message",
+                    "content": "Course duration varies by program. You will find the details on this page.",
+                }
+            )
         elif sec == "syllabus" and detected_course:
-            actions.append({
-                "type": "scroll",
-                "selector": detected_course["section"],
-            })
-            actions.append({
-                "type": "message",
-                "content": "Here’s the syllabus section for this course.",
-            })
-
-        # 🎯 Placements
+            actions.append({"type": "scroll", "selector": detected_course["section"]})
+            actions.append(
+                {
+                    "type": "message",
+                    "content": "Here is the syllabus section for this course.",
+                }
+            )
         elif sec == "placements":
-            actions.append({
-                "type": "message",
-                "content": (
-                    "Our programs include strong placement support "
-                    "with real industry exposure."
-                ),
-            })
-
-        # 🎓 Certificate
+            actions.append(
+                {
+                    "type": "message",
+                    "content": "Our programs include strong placement support with real industry exposure.",
+                }
+            )
         elif sec == "certificate":
-            actions.append({
-                "type": "message",
-                "content": (
-                    "You’ll receive a recognized certificate "
-                    "upon successful completion."
-                ),
-            })
-
-        # 📅 Batch
+            actions.append(
+                {
+                    "type": "message",
+                    "content": "You will receive a recognized certificate after successful completion.",
+                }
+            )
         elif sec == "batch":
-            actions.append({
-                "type": "message",
-                "content": (
-                    "Batch start dates depend on the program. "
-                    "The next batch details are available here."
-                ),
-            })
+            actions.append(
+                {
+                    "type": "message",
+                    "content": "Batch start dates depend on the program. Next batch details are available on the page.",
+                }
+            )
 
-    # =========================
-    # 10️⃣ Save intent for memory
-    # =========================
     session["last_intent"] = intent
 
-    # =========================
-    # 🔟 Final response
-    # =========================
-    return {
-        "session_id": session_id,
-        "actions": actions,
-    }
+    return {"session_id": session_id, "actions": actions}
