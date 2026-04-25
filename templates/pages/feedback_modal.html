@@ -1,0 +1,545 @@
+<!-- FEEDBACK MODAL -->
+<div
+  id="feedback-modal"
+  class="fixed inset-0 z-[9999] hidden"
+  aria-hidden="true"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="feedback-modal-title"
+>
+  <!-- Backdrop -->
+  <div
+    id="feedback-backdrop"
+    class="fixed inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
+  ></div>
+
+  <!-- Modal Card -->
+  <div class="fixed inset-0 flex items-center justify-center p-4 pointer-events-none">
+    <div
+      id="feedback-card"
+      class="bg-white rounded-2xl shadow-2xl w-full max-w-md pointer-events-auto relative transform transition-all duration-300 opacity-0 scale-95 translate-y-4"
+    >
+      <!-- Close Button -->
+      <button
+        type="button"
+        id="feedback-close"
+        class="absolute top-4 right-4 w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+        aria-label="Close feedback form"
+      >
+        <svg viewBox="0 0 24 24" class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+
+      <!-- Form Content -->
+      <div id="feedback-form-container" class="p-6">
+        <h2 id="feedback-modal-title" class="text-xl font-semibold text-gray-900 mb-1">Share Your Feedback</h2>
+        <p class="text-sm text-gray-500 mb-5">Help us improve Boffins Academy</p>
+
+        <form id="feedback-form" novalidate>
+          {% csrf_token %}
+
+          <!-- Identity Section -->
+          <div class="space-y-4 mb-6">
+            <div>
+              <label for="id_full_name" class="block text-sm font-medium text-gray-700 mb-1">Full Name <span class="text-red-500">*</span></label>
+              <input
+                type="text"
+                name="full_name"
+                id="id_full_name"
+                required
+                class="h-10 w-full rounded-lg border border-[#E6E2F0] px-4 text-sm focus:border-[#6B4EFF] focus:ring-2 focus:ring-[#6B4EFF]/20 outline-none transition-colors"
+                placeholder="Your full name"
+              >
+              <span class="feedback-error text-red-500 text-xs mt-1 hidden"></span>
+            </div>
+
+            <div>
+              <label for="id_email" class="block text-sm font-medium text-gray-700 mb-1">Email Address <span class="text-red-500">*</span></label>
+              <input
+                type="email"
+                name="email"
+                id="id_email"
+                required
+                class="h-10 w-full rounded-lg border border-[#E6E2F0] px-4 text-sm focus:border-[#6B4EFF] focus:ring-2 focus:ring-[#6B4EFF]/20 outline-none transition-colors"
+                placeholder="your@email.com"
+              >
+              <span class="feedback-error text-red-500 text-xs mt-1 hidden"></span>
+            </div>
+
+            <div>
+              <label for="id_phone" class="block text-sm font-medium text-gray-700 mb-1">Phone Number <span class="text-gray-400">(optional)</span></label>
+              <input
+                type="tel"
+                name="phone"
+                id="id_phone"
+                class="h-10 w-full rounded-lg border border-[#E6E2F0] px-4 text-sm focus:border-[#6B4EFF] focus:ring-2 focus:ring-[#6B4EFF]/20 outline-none transition-colors"
+                placeholder="+91 9876543210"
+              >
+              <span class="feedback-error text-red-500 text-xs mt-1 hidden"></span>
+            </div>
+
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">I am a <span class="text-red-500">*</span></label>
+              <div class="flex gap-6">
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="submitter_type" value="student" required class="w-4 h-4 text-[#6B4EFF] focus:ring-[#6B4EFF]/20">
+                  <span class="text-sm text-gray-700">Student</span>
+                </label>
+                <label class="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="submitter_type" value="visitor" required class="w-4 h-4 text-[#6B4EFF] focus:ring-[#6B4EFF]/20">
+                  <span class="text-sm text-gray-700">Visitor</span>
+                </label>
+              </div>
+              <span class="feedback-error text-red-500 text-xs mt-1 hidden"></span>
+            </div>
+
+            <!-- Conditional: Course Dropdown (students only) -->
+            <div id="course-field-container" class="hidden">
+              <label for="id_course" class="block text-sm font-medium text-gray-700 mb-1">Course Enrolled <span class="text-red-500">*</span></label>
+              <select
+                name="course"
+                id="id_course"
+                class="h-10 w-full rounded-lg border border-[#E6E2F0] px-4 text-sm focus:border-[#6B4EFF] focus:ring-2 focus:ring-[#6B4EFF]/20 outline-none transition-colors"
+              >
+                <option value="">Select a course</option>
+              </select>
+              <span class="feedback-error text-red-500 text-xs mt-1 hidden"></span>
+            </div>
+          </div>
+
+          <!-- Rating Section -->
+          <div class="space-y-4 mb-6">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">Overall Academy Rating <span class="text-red-500">*</span></label>
+              <div class="feedback-star-widget" data-rating-input="id_overall_rating" aria-labelledby="overall-rating-label">
+                <div id="overall-rating-label" class="sr-only">Rate the overall academy experience</div>
+                <div class="flex gap-1">
+                 {% for i in "12345" %}
+<button
+  type="button"
+  class="feedback-star w-8 h-8 flex items-center justify-center text-2xl transition-transform hover:scale-110 focus:outline-none"
+  data-value="{{ i }}"
+  aria-label="{{ i }} stars"
+>
+  <svg viewBox="0 0 24 24" class="w-7 h-7 fill-gray-300 text-gray-300 transition-colors">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </svg>
+</button>
+{% endfor %}
+                </div>
+              </div>
+              <input type="hidden" name="overall_rating" id="id_overall_rating" value="">
+              <span class="feedback-error text-red-500 text-xs mt-1 hidden"></span>
+            </div>
+
+            <!-- Conditional: Instructor Rating (students only) -->
+            <div id="instructor-field-container" class="hidden">
+              <label class="block text-sm font-medium text-gray-700 mb-2">Rate Your Instructor</label>
+              <div class="feedback-star-widget" data-rating-input="id_instructor_rating" aria-labelledby="instructor-rating-label">
+                <div id="instructor-rating-label" class="sr-only">Rate your instructor</div>
+                <div class="flex gap-1">
+                  {% for i in "12345" %}
+<button
+  type="button"
+  class="feedback-star w-8 h-8 flex items-center justify-center text-2xl transition-transform hover:scale-110 focus:outline-none"
+  data-value="{{ i }}"
+  aria-label="{{ i }} stars"
+>
+  <svg viewBox="0 0 24 24" class="w-7 h-7 fill-gray-300 text-gray-300 transition-colors">
+    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </svg>
+</button>
+{% endfor %}
+                </div>
+              </div>
+              <input type="hidden" name="instructor_rating" id="id_instructor_rating" value="">
+              <span class="feedback-error text-red-500 text-xs mt-1 hidden"></span>
+            </div>
+
+            <div>
+              <label for="id_message" class="block text-sm font-medium text-gray-700 mb-1">Written Feedback <span class="text-gray-400">(optional)</span></label>
+              <textarea
+                name="message"
+                id="id_message"
+                rows="3"
+                class="w-full rounded-lg border border-[#E6E2F0] px-4 py-3 text-sm resize-none focus:border-[#6B4EFF] focus:ring-2 focus:ring-[#6B4EFF]/20 outline-none transition-colors"
+                placeholder="What did you enjoy? What could we improve?"
+              ></textarea>
+              <span class="feedback-error text-red-500 text-xs mt-1 hidden"></span>
+            </div>
+
+            <div class="flex items-start gap-3">
+              <input
+                type="checkbox"
+                name="testimonial_consent"
+                id="id_testimonial_consent"
+                class="mt-1 w-4 h-4 rounded border-[#E6E2F0] text-[#6B4EFF] focus:ring-[#6B4EFF]/20 cursor-pointer"
+              >
+              <label for="id_testimonial_consent" class="text-sm text-gray-600 cursor-pointer">
+                I consent to my feedback being used as a testimonial (with my name)
+              </label>
+            </div>
+          </div>
+
+          <!-- Hidden source field -->
+          <input type="hidden" name="source" id="feedback-source" value="drawer">
+
+          <!-- Submit Button -->
+          <button
+            type="submit"
+            id="feedback-submit"
+            disabled
+            class="w-full h-11 rounded-xl bg-[#6C5CE7] text-white font-semibold text-sm transition-all duration-200 disabled:bg-gray-300 disabled:cursor-not-allowed hover:bg-[#5a4bd4] active:scale-[0.98]"
+          >
+            <span id="feedback-submit-text">Submit Feedback</span>
+            <span id="feedback-submit-spinner" class="hidden items-center justify-center gap-2">
+              <svg class="animate-spin w-4 h-4" viewBox="0 0 24 24" fill="none">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Submitting...
+            </span>
+          </button>
+        </form>
+
+        <!-- Success State -->
+        <div id="feedback-success" class="hidden text-center py-8">
+          <div class="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg class="w-7 h-7 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </div>
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">Thank you!</h3>
+          <p class="text-sm text-gray-500 mb-5">Your feedback helps us build a better Boffins.</p>
+          <button
+            type="button"
+            id="feedback-success-close"
+            class="px-6 py-2 rounded-xl bg-[#6C5CE7] text-white text-sm font-medium hover:bg-[#5a4bd4] transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .feedback-star svg {
+    transition: fill 0.15s ease, transform 0.15s ease;
+  }
+
+  .feedback-star.highlighted svg,
+  .feedback-star.selected svg {
+    fill: #FFB800;
+    color: #FFB800;
+  }
+
+  .feedback-error:empty {
+    display: none;
+  }
+</style>
+
+<script>
+(function() {
+  const modal = document.getElementById('feedback-modal');
+  const backdrop = document.getElementById('feedback-backdrop');
+  const card = document.getElementById('feedback-card');
+  const closeBtn = document.getElementById('feedback-close');
+  const successCloseBtn = document.getElementById('feedback-success-close');
+  const form = document.getElementById('feedback-form');
+  const submitBtn = document.getElementById('feedback-submit');
+  const submitText = document.getElementById('feedback-submit-text');
+  const submitSpinner = document.getElementById('feedback-submit-spinner');
+  const successDiv = document.getElementById('feedback-success');
+  const formContainer = document.getElementById('feedback-form-container');
+
+  const courseField = document.getElementById('course-field-container');
+  const instructorField = document.getElementById('instructor-field-container');
+  const submitterRadios = document.querySelectorAll('input[name="submitter_type"]');
+  const sourceInput = document.getElementById('feedback-source');
+
+  const starWidgets = document.querySelectorAll('.feedback-star-widget');
+  const overallRatingInput = document.getElementById('id_overall_rating');
+  const instructorRatingInput = document.getElementById('id_instructor_rating');
+
+  let currentSource = 'drawer';
+  let isSubmitting = false;
+
+  // Fetch courses for dropdown
+  function fetchCourses() {
+    const select = document.getElementById('id_course');
+    if (!select) return;
+    if (select.options.length > 1) return; // Already loaded
+
+    fetch('/api/courses/')
+      .then(function(response) { return response.json(); })
+      .then(function(courses) {
+        courses.forEach(function(course) {
+          const option = document.createElement('option');
+          option.value = course.id;
+          option.textContent = course.title;
+          select.appendChild(option);
+        });
+      })
+      .catch(function(err) {
+        console.error('Failed to load courses:', err);
+      });
+  }
+
+  // ---- Modal Open/Close ----
+  window.openFeedbackModal = function(source) {
+    currentSource = source || 'drawer';
+    if (sourceInput) sourceInput.value = currentSource;
+
+    modal.classList.remove('hidden');
+    modal.setAttribute('aria-hidden', 'false');
+
+    requestAnimationFrame(function() {
+      card.classList.remove('opacity-0', 'scale-95', 'translate-y-4');
+      card.classList.add('opacity-100', 'scale-100', 'translate-y-0');
+    });
+
+    document.body.style.overflow = 'hidden';
+
+    // Load courses dynamically
+    fetchCourses();
+
+    // Focus first input
+    setTimeout(function() {
+      const firstInput = form.querySelector('input[name="full_name"]');
+      if (firstInput) firstInput.focus();
+    }, 100);
+  };
+
+  function closeModal() {
+    card.classList.add('opacity-0', 'scale-95', 'translate-y-4');
+    card.classList.remove('opacity-100', 'scale-100', 'translate-y-0');
+
+    setTimeout(function() {
+      modal.classList.add('hidden');
+      modal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+      resetForm();
+    }, 300);
+  }
+
+  function resetForm() {
+    form.reset();
+    clearErrors();
+    successDiv.classList.add('hidden');
+    formContainer.querySelector('h2').classList.remove('hidden');
+    formContainer.querySelector('p').classList.remove('hidden');
+    form.style.display = '';
+    submitBtn.disabled = true;
+    isSubmitting = false;
+    submitText.classList.remove('hidden');
+    submitSpinner.classList.add('hidden');
+    submitBtn.classList.remove('pointer-events-none');
+
+    // Reset star states
+    starWidgets.forEach(function(widget) {
+      widget.querySelectorAll('.feedback-star').forEach(function(btn) {
+        btn.classList.remove('highlighted', 'selected');
+      });
+    });
+
+    // Reset hidden rating inputs
+    if (overallRatingInput) overallRatingInput.value = '';
+    if (instructorRatingInput) instructorRatingInput.value = '';
+
+    // Hide conditional fields
+    if (courseField) courseField.classList.add('hidden');
+    if (instructorField) instructorField.classList.add('hidden');
+  }
+
+  // ---- Event Listeners ----
+  if (closeBtn) closeBtn.addEventListener('click', closeModal);
+  if (successCloseBtn) successCloseBtn.addEventListener('click', closeModal);
+  if (backdrop) backdrop.addEventListener('click', closeModal);
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && !modal.classList.contains('hidden')) {
+      closeModal();
+    }
+  });
+
+  // ---- Submitter Type Toggle ----
+  submitterRadios.forEach(function(radio) {
+    radio.addEventListener('change', function() {
+      const isStudent = this.value === 'student';
+      if (courseField) {
+        courseField.classList.toggle('hidden', !isStudent);
+        if (!isStudent) {
+          const courseSelect = courseField.querySelector('select');
+          if (courseSelect) courseSelect.value = '';
+        }
+      }
+      if (instructorField) {
+        instructorField.classList.toggle('hidden', !isStudent);
+        if (!isStudent) {
+          instructorRatingInput.value = '';
+          const stars = instructorField.querySelectorAll('.feedback-star');
+          stars.forEach(function(s) { s.classList.remove('highlighted', 'selected'); });
+        }
+      }
+    });
+  });
+
+  // ---- Star Widget Interaction ----
+  starWidgets.forEach(function(widget) {
+    const inputId = widget.getAttribute('data-rating-input');
+    const input = document.getElementById(inputId);
+    const stars = widget.querySelectorAll('.feedback-star');
+
+    function updateStars(value, highlightOnly) {
+      stars.forEach(function(star) {
+        const starValue = parseInt(star.getAttribute('data-value'));
+        star.classList.remove('highlighted', 'selected');
+        if (starValue <= value) {
+          star.classList.add(highlightOnly ? 'highlighted' : 'selected');
+        }
+      });
+    }
+
+    stars.forEach(function(star) {
+      star.addEventListener('mouseenter', function() {
+        const value = parseInt(this.getAttribute('data-value'));
+        updateStars(value, true);
+      });
+
+      star.addEventListener('mouseleave', function() {
+        const currentValue = input && input.value ? parseInt(input.value) : 0;
+        updateStars(currentValue, false);
+      });
+
+      star.addEventListener('click', function() {
+        const value = parseInt(this.getAttribute('data-value'));
+        if (input) input.value = value;
+        updateStars(value, false);
+        validateForm();
+      });
+    });
+  });
+
+  // ---- Form Validation ----
+  function validateForm() {
+    const overallRating = overallRatingInput && overallRatingInput.value;
+    const submitterType = document.querySelector('input[name="submitter_type"]:checked');
+    const fullName = form.querySelector('input[name="full_name"]').value.trim();
+    const email = form.querySelector('input[name="email"]').value.trim();
+
+    const isValid = overallRating && submitterType && fullName && email;
+    submitBtn.disabled = !isValid;
+  }
+
+  // ---- Clear Errors ----
+  function clearErrors() {
+    form.querySelectorAll('.feedback-error').forEach(function(el) {
+      el.classList.add('hidden');
+      el.textContent = '';
+    });
+    form.querySelectorAll('.border-red-500').forEach(function(el) {
+      el.classList.remove('border-red-500');
+    });
+  }
+
+  function showFieldError(fieldName, message) {
+    const input = form.querySelector('[name="' + fieldName + '"]');
+    const errorSpan = input ? input.parentElement.querySelector('.feedback-error') : null;
+    if (errorSpan) {
+      errorSpan.textContent = message;
+      errorSpan.classList.remove('hidden');
+    }
+    if (input) input.classList.add('border-red-500');
+  }
+
+  // ---- Form Submit ----
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (isSubmitting) return;
+
+    clearErrors();
+    isSubmitting = true;
+    submitBtn.disabled = true;
+    submitText.classList.add('hidden');
+    submitSpinner.classList.remove('hidden');
+    submitSpinner.classList.add('flex');
+    submitBtn.classList.add('pointer-events-none');
+
+    var formData = new FormData(form);
+
+    fetch('/feedback/', {
+      method: 'POST',
+      body: formData,
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+      }
+    })
+    .then(function(response) {
+      return response.json();
+    })
+    .then(function(data) {
+      if (data.success) {
+        successDiv.classList.remove('hidden');
+        form.style.display = 'none';
+        formContainer.querySelector('h2').classList.add('hidden');
+        formContainer.querySelector('p').classList.add('hidden');
+      } else {
+        // Show field errors
+        if (data.errors) {
+          for (var field in data.errors) {
+            showFieldError(field, data.errors[field]);
+          }
+        }
+        isSubmitting = false;
+        submitBtn.disabled = false;
+        submitText.classList.remove('hidden');
+        submitSpinner.classList.add('hidden');
+        submitSpinner.classList.remove('flex');
+        submitBtn.classList.remove('pointer-events-none');
+        validateForm();
+      }
+    })
+    .catch(function(error) {
+      console.error('Feedback submission error:', error);
+      isSubmitting = false;
+      submitBtn.disabled = false;
+      submitText.classList.remove('hidden');
+      submitSpinner.classList.add('hidden');
+      submitSpinner.classList.remove('flex');
+      submitBtn.classList.remove('pointer-events-none');
+      validateForm();
+    });
+  });
+
+  // Real-time validation listeners
+  form.querySelectorAll('input[type="text"], input[type="email"], input[type="radio"]').forEach(function(el) {
+    el.addEventListener('input', validateForm);
+    el.addEventListener('change', validateForm);
+  });
+
+  // Focus trap
+  modal.addEventListener('keydown', function(e) {
+    if (e.key !== 'Tab') return;
+    var focusables = formContainer.querySelectorAll('button, input, select, textarea, [tabindex]:not([tabindex="-1"])');
+    focusables = Array.prototype.filter.call(focusables, function(el) {
+      return !el.disabled && !el.closest('#feedback-success');
+    });
+
+    if (focusables.length === 0) return;
+
+    var first = focusables[0];
+    var last = focusables[focusables.length - 1];
+
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  });
+})();
+</script>

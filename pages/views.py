@@ -1,8 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.views.decorators.http import require_http_methods
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
-from .forms import ContactForm
+from .forms import ContactForm, FeedbackForm
 from .models import Courses, GalleryImage, Placement, Company
 
 
@@ -243,3 +245,33 @@ def contact(request):
     }
 
     return render(request, "pages/contact.html", context)
+
+
+# ---------- FEEDBACK ----------
+@require_http_methods(["POST"])
+def feedback_submit(request):
+    form = FeedbackForm(request.POST)
+    if form.is_valid():
+        submission = form.save(commit=False)
+        submission.source = request.POST.get("source", "drawer")
+        submission.ip_address = get_client_ip(request)
+        submission.save()
+        return JsonResponse({"success": True})
+
+    errors = {field: errors[0] if (errors := form.errors.get(field)) else "Invalid value"
+              for field in form.errors}
+    return JsonResponse({"success": False, "errors": errors}, status=400)
+
+
+def get_client_ip(request):
+    x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+    if x_forwarded_for:
+        return x_forwarded_for.split(",")[0].strip()
+    return request.META.get("REMOTE_ADDR")
+
+
+# ---------- API ----------
+def api_courses(request):
+    from django.http import JsonResponse
+    courses = Courses.objects.filter(is_active=True).order_by("title").values("id", "title")
+    return JsonResponse(list(courses), safe=False)

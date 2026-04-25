@@ -271,6 +271,48 @@ class Placement(models.Model):
         return self.name
     
 
+class FeedbackSubmission(models.Model):
+    SUBMITTER_TYPE_CHOICES = [
+        ("student", "Student"),
+        ("visitor", "Visitor"),
+    ]
+    SOURCE_CHOICES = [
+        ("drawer", "Drawer"),
+        ("footer", "Footer"),
+    ]
+
+    full_name = models.CharField(max_length=120)
+    email = models.EmailField()
+    phone = models.CharField(max_length=20, blank=True, null=True)
+    submitter_type = models.CharField(max_length=20, choices=SUBMITTER_TYPE_CHOICES)
+    course = models.ForeignKey(
+        Courses,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="feedback_submissions",
+    )
+    overall_rating = models.PositiveSmallIntegerField(
+        help_text="1–5 star rating"
+    )
+    instructor_rating = models.PositiveSmallIntegerField(
+        blank=True,
+        null=True,
+        help_text="1–5 star rating, null for visitors"
+    )
+    message = models.TextField(blank=True, null=True)
+    testimonial_consent = models.BooleanField(default=False)
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.full_name} - {self.submitter_type} - {self.overall_rating}★"
+
+
 class Company(models.Model):
     name = models.CharField(max_length=100)
     logo = models.ImageField(

@@ -7,6 +7,7 @@ from .models import (
     GalleryImage,
     Placement,
     Company,
+    FeedbackSubmission,
 
     # Course sub-models
     CourseSalary,
@@ -130,3 +131,31 @@ class CompanyAdmin(admin.ModelAdmin):
     list_display = ("name", "is_active", "order")
     list_editable = ("is_active", "order")
     search_fields = ("name",)
+
+
+# =========================
+# Feedback Submissions
+# =========================
+@admin.register(FeedbackSubmission)
+class FeedbackSubmissionAdmin(admin.ModelAdmin):
+    list_display = (
+        "created_at",
+        "full_name",
+        "email",
+        "submitter_type",
+        "course",
+        "overall_rating",
+        "instructor_rating",
+        "source",
+        "testimonial_consent",
+    )
+    list_filter = (
+        "submitter_type",
+        "source",
+        "overall_rating",
+        "course",
+        "testimonial_consent",
+    )
+    search_fields = ("full_name", "email", "message")
+    readonly_fields = ("created_at", "source", "ip_address")
+    ordering = ("-created_at",)
